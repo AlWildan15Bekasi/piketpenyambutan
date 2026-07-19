@@ -3,20 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presensi Piket Al-Wildan</title>
+    <title>Sistem Presensi Piket Al-Wildan</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'aw-green': '#005c3c',
-                        'aw-dark': '#00422a',
-                        'aw-gold': '#d4af37',
-                        'aw-light': '#f3f4f6'
+                        'aw-green': '#005b42',
+                        'aw-dark': '#003d2b',
+                        'aw-gold': '#d9a036',
+                        'aw-light': '#f0f6f4'
                     },
                     fontFamily: {
                         sans: ['Poppins', 'sans-serif'],
@@ -27,16 +35,27 @@
     </script>
     <style>
         body { background-color: #f3f4f6; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #005b42; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #003d2b; }
+        
         .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #005c3c;
+            border-top: 4px solid #d9a036;
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Print Styles */
+        
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .nav-item { cursor: pointer; transition: all 0.2s; border-bottom: 3px solid transparent; }
+        .nav-item.active { border-bottom-color: #d9a036; color: #d9a036; font-weight: 600; }
+        
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
@@ -46,64 +65,67 @@
 <body class="text-gray-800 antialiased font-sans">
 
     <!-- MODAL NOTIFIKASI -->
-    <div id="modal-notif" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl p-6 w-96 text-center shadow-2xl transform transition-all">
+    <div id="modal-notif" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[100] flex items-center justify-center backdrop-blur-sm transition-all">
+        <div class="bg-white rounded-2xl p-8 w-96 text-center shadow-2xl fade-in border-t-4 border-aw-green">
             <div id="modal-icon" class="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4"></div>
-            <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
-            <p id="modal-message" class="text-gray-600 mb-6"></p>
-            <button onclick="closeModal()" class="bg-aw-green text-white px-6 py-2 rounded-lg font-medium hover:bg-aw-dark w-full">Tutup</button>
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-2"></h3>
+            <p id="modal-message" class="text-gray-500 mb-6 text-sm"></p>
+            <button onclick="closeModal()" class="bg-aw-green text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-aw-dark w-full transition-colors shadow-md">Tutup</button>
         </div>
     </div>
 
     <!-- LOADING OVERLAY -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-80 hidden z-40 flex flex-col items-center justify-center">
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 hidden z-[90] flex flex-col items-center justify-center backdrop-blur-sm">
         <div class="loader mb-4"></div>
-        <p class="text-aw-green font-medium animate-pulse">Memproses Data...</p>
+        <p class="text-aw-green font-semibold animate-pulse tracking-wider mt-3">Memproses Data...</p>
     </div>
 
     <!-- HALAMAN LOGIN -->
-    <div id="login-page" class="min-h-screen flex items-center justify-center bg-aw-green p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div id="login-page" class="min-h-screen flex items-center justify-center bg-aw-green p-4 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-aw-green via-aw-gold to-aw-green"></div>
             <div class="text-center mb-8">
-                <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" alt="Logo Al-Wildan" class="w-24 h-24 mx-auto mb-4 object-contain">
-                <h1 class="text-2xl font-bold text-aw-green">Presensi Piket</h1>
-                <p class="text-gray-500 text-sm">Sistem Kedisiplinan Terpadu</p>
+                <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" alt="Logo Al-Wildan" class="w-28 h-28 mx-auto mb-4 object-contain drop-shadow-md">
+                <h1 class="text-2xl font-extrabold text-aw-dark tracking-tight">Presensi Piket</h1>
+                <p class="text-gray-500 text-sm mt-1">Sistem Kedisiplinan Terpadu</p>
             </div>
             <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aw-green focus:border-transparent" required>
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold text-gray-600 mb-2">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-aw-green focus:border-aw-green outline-none transition-all" required placeholder="Masukkan username">
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-aw-green focus:border-transparent" required>
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-gray-600 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-aw-green focus:border-aw-green outline-none transition-all" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="w-full bg-aw-green text-white font-bold py-3 px-4 rounded-lg hover:bg-aw-dark transition duration-200">Masuk ke Sistem</button>
+                <button type="submit" class="w-full bg-gradient-to-r from-aw-green to-aw-dark text-white font-bold py-3.5 px-4 rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200">
+                    Masuk ke Sistem
+                </button>
             </form>
         </div>
     </div>
 
     <!-- MAIN APP WRAPPER -->
-    <div id="main-app" class="hidden min-h-screen">
-        <!-- NAVBAR TERPADU -->
+    <div id="main-app" class="hidden min-h-screen flex flex-col">
+        <!-- NAVBAR -->
         <nav class="bg-aw-green text-white shadow-lg sticky top-0 z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" class="h-10 w-10 mr-3 bg-white rounded-full p-1">
-                        <div>
-                            <span class="font-bold text-lg block leading-tight">Al-Wildan</span>
-                            <span class="text-xs text-aw-gold" id="user-greeting">Sistem Presensi</span>
+                <div class="flex justify-between items-end h-16">
+                    <div class="flex items-center pb-3">
+                        <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" class="h-10 w-10 mr-3 bg-white rounded-full p-1 shadow-sm">
+                        <div class="leading-tight hidden sm:block">
+                            <span class="font-bold text-lg block tracking-wide">Al-Wildan</span>
+                            <span class="text-xs text-aw-gold font-medium" id="user-greeting">Sistem Presensi</span>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-6">
-                        <!-- Menu khusus Koor -->
-                        <span id="nav-koor" class="hidden font-medium text-aw-gold border-b-2 border-aw-gold pb-1">Dashboard</span>
-                        <!-- Menu khusus Manajemen -->
-                        <span id="nav-manajemen" class="hidden font-medium text-aw-gold border-b-2 border-aw-gold pb-1">Data Rekap</span>
-                        
-                        <button onclick="logout()" class="flex items-center text-sm bg-aw-dark px-3 py-1.5 rounded-lg hover:bg-white hover:text-aw-green transition">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    
+                    <!-- TAB MENU (Dynamic) -->
+                    <div class="flex space-x-2 sm:space-x-6 px-2 sm:px-4 overflow-x-auto" id="nav-menu-container">
+                        <!-- Menu Injected by JS based on Role -->
+                    </div>
+
+                    <div class="pb-3 flex items-center">
+                        <button onclick="logout()" class="flex items-center text-sm bg-white/10 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-colors font-medium border border-white/20">
                             Keluar
                         </button>
                     </div>
@@ -111,132 +133,30 @@
             </div>
         </nav>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
-            <!-- VIEW KOORDINATOR: INPUT ABSEN -->
-            <div id="view-koor" class="hidden">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-aw-green">Input Presensi Harian</h2>
-                    <p class="text-gray-600">Pilih tanggal untuk melihat jadwal piket guru otomatis.</p>
-                </div>
-                
-                <div class="bg-white p-5 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row items-end gap-4 border border-gray-100">
-                    <div class="w-full md:w-64">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Piket</label>
-                        <input type="date" id="tgl-absen" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-aw-green" onchange="loadJadwalGuru()">
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full whitespace-nowrap">
-                            <thead class="bg-aw-green text-white text-left text-sm">
-                                <tr>
-                                    <th class="px-6 py-4 font-semibold">NAMA GURU</th>
-                                    <th class="px-6 py-4 font-semibold">STATUS</th>
-                                    <th class="px-6 py-4 font-semibold">WAKTU HADIR</th>
-                                    <th class="px-6 py-4 font-semibold">KETERANGAN</th>
-                                    <th class="px-6 py-4 font-semibold text-center">AKSI</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabel-input" class="divide-y divide-gray-100 text-sm">
-                                <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 italic">Pilih tanggal terlebih dahulu.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
-                        <button onclick="tambahGuruPengganti()" class="text-sm font-medium text-aw-green hover:text-aw-dark flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                            Tambah Guru Pengganti
-                        </button>
-                        <button onclick="simpanPresensi()" class="bg-aw-green text-white px-6 py-2 rounded-lg font-medium hover:bg-aw-dark shadow-md">Simpan Presensi</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW MANAJEMEN: LAPORAN REKAP -->
-            <div id="view-manajemen" class="hidden">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold text-aw-green">Laporan Rekapitulasi Presensi</h2>
-                    <p class="text-gray-600">Filter, lihat, dan ekspor data kedisiplinan guru piket.</p>
-                </div>
-                
-                <!-- Filter Range Tanggal -->
-                <div class="bg-white p-5 rounded-xl shadow-sm mb-6 flex flex-wrap items-end gap-4 border border-gray-100 justify-between">
-                    <div class="flex flex-wrap items-end gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
-                            <input type="date" id="filter-start" class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-aw-green">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Sampai Tanggal</label>
-                            <input type="date" id="filter-end" class="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-aw-green">
-                        </div>
-                        <button onclick="loadRekap()" class="bg-aw-dark text-white px-5 py-2 rounded-lg font-medium hover:bg-aw-green flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                            Terapkan Filter
-                        </button>
-                    </div>
-                    <div class="flex gap-3">
-                        <button onclick="exportExcel()" class="border border-green-600 text-green-700 px-4 py-2 rounded-lg font-medium hover:bg-green-50 flex items-center bg-white">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            Export Excel
-                        </button>
-                        <button onclick="exportPDF()" class="border border-red-500 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-50 flex items-center bg-white">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            Export PDF
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Area yang akan di Print/PDF -->
-                <div id="print-area" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    
-                    <!-- Kop Surat (Hanya muncul saat PDF/Print) -->
-                    <div id="kop-surat" class="hidden border-b-4 border-aw-green pb-4 mb-6 mt-4 mx-8">
-                        <div class="flex items-center justify-between">
-                            <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" class="w-24 h-24 object-contain">
-                            <div class="text-center flex-1">
-                                <h1 class="text-2xl font-bold text-aw-green uppercase tracking-wide">Al-Wildan Islamic School</h1>
-                                <p class="text-sm text-gray-600 font-medium">Laporan Resmi Rekapitulasi Kehadiran Guru Piket</p>
-                                <p class="text-xs text-gray-500 mt-1" id="pdf-periode"></p>
-                            </div>
-                            <div class="w-24"></div> <!-- Spacer -->
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full whitespace-nowrap" id="tabel-laporan">
-                            <thead class="bg-aw-green text-white text-left text-sm">
-                                <tr>
-                                    <th class="px-6 py-4 font-semibold">TANGGAL</th>
-                                    <th class="px-6 py-4 font-semibold">NAMA GURU</th>
-                                    <th class="px-6 py-4 font-semibold">WAKTU</th>
-                                    <th class="px-6 py-4 font-semibold">STATUS</th>
-                                    <th class="px-6 py-4 font-semibold">SKOR</th>
-                                    <th class="px-6 py-4 font-semibold">KETERANGAN</th>
-                                </tr>
-                            </thead>
-                            <tbody id="body-rekap" class="divide-y divide-gray-100 text-sm">
-                                <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400 italic">Pilih rentang tanggal dan klik "Terapkan Filter"</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
+        <!-- CONTENT AREA -->
+        <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" id="content-area">
+            <!-- Konten akan di-render di sini oleh JavaScript -->
         </div>
     </div>
 
-    <!-- SCRIPT LOGIKA -->
     <script>
-        // GANTI URL INI DENGAN URL APPS SCRIPT MILIK ANTUM
+        // ==========================================
+        // KONFIGURASI UTAMA
+        // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw5DP_xWvOVwp8GlnIN5xJhqYXPDseI4NzuyQ4SpWrEKf5CrC0h9IAfPuuemjZiduo4xQ/exec";
         
         let currentUser = null;
-        let dataInputSementara = [];
+        let currentTab = '';
+        
+        // State Data
+        let dataInputSementara = []; 
+        let dataRekapGlobal = [];    
+        let dataYearlyRaw = [];      
+        let dashboardChartInstance = null;
 
-        // --- SISTEM MODAL & LOADING ---
+        // ==========================================
+        // UI HELPERS (MODAL & LOADER)
+        // ==========================================
         function showLoading(show) {
             document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
         }
@@ -248,89 +168,56 @@
             
             const iconContainer = document.getElementById('modal-icon');
             if (isSuccess) {
-                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-green-100 text-green-500";
-                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-green-100 text-green-600";
+                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
             } else {
-                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-red-100 text-red-500";
-                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                iconContainer.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-red-100 text-red-600";
+                iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>`;
             }
-            
             modal.classList.remove('hidden');
         }
 
-        function closeModal() {
-            document.getElementById('modal-notif').classList.add('hidden');
-        }
+        function closeModal() { document.getElementById('modal-notif').classList.add('hidden'); }
 
-        // --- CORE API FETCHER (ANTI-CORS) ---
-        async function fetchAPI(action, extraParams = {}) {
+        async function fetchAPI(action, payloadObj = {}) {
             try {
                 const params = new URLSearchParams();
-                params.append('action', action);
-                for (const key in extraParams) {
-                    params.append(key, extraParams[key]);
-                }
+                const dataString = JSON.stringify({ action: action, payload: payloadObj });
+                params.append('data', dataString); 
 
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
                     body: params
                 });
-                
-                const result = await response.json();
-                return result;
+                return await response.json();
             } catch (error) {
                 console.error("API Error:", error);
                 throw error;
             }
         }
 
-        // --- LOGIN & ROUTING ---
+        // ==========================================
+        // AUTHENTICATION & ROUTING
+        // ==========================================
         async function handleLogin(e) {
             e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
 
             showLoading(true);
             try {
                 const res = await fetchAPI('login', { username: u, password: p });
                 if (res.status === 'success') {
                     currentUser = res.data;
-                    document.getElementById('user-greeting').textContent = `Halo, ${currentUser.nama}`;
-                    showApp(currentUser.role);
+                    document.getElementById('user-greeting').textContent = `${currentUser.nama} (${currentUser.role})`;
+                    buildNavbar();
                 } else {
-                    showNotif('Login Gagal', 'Username atau password salah.', false);
+                    showNotif('Login Gagal', res.message || 'Username atau password salah.', false);
                 }
             } catch (err) {
-                showNotif('Koneksi Gagal', 'Tidak dapat terhubung ke server database.', false);
+                showNotif('Koneksi Gagal', 'Pastikan internet stabil dan URL Apps Script benar.', false);
             }
             showLoading(false);
-        }
-
-        function showApp(role) {
-            document.getElementById('login-page').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-
-            const viewKoor = document.getElementById('view-koor');
-            const viewManajemen = document.getElementById('view-manajemen');
-            const navKoor = document.getElementById('nav-koor');
-            const navManajemen = document.getElementById('nav-manajemen');
-
-            // Reset tampilan
-            viewKoor.classList.add('hidden');
-            viewManajemen.classList.add('hidden');
-            navKoor.classList.add('hidden');
-            navManajemen.classList.add('hidden');
-
-            // Routing murni berdasarkan Role
-            if (role === 'koor') {
-                viewKoor.classList.remove('hidden');
-                navKoor.classList.remove('hidden'); // Munculin Tab Dashboard
-                document.getElementById('tgl-absen').value = new Date().toISOString().split('T')[0];
-                loadJadwalGuru();
-            } else if (role === 'manajemen') {
-                viewManajemen.classList.remove('hidden');
-                navManajemen.classList.remove('hidden'); // Munculin Tab Laporan
-            }
         }
 
         function logout() {
@@ -340,184 +227,656 @@
             document.getElementById('login-form').reset();
         }
 
-        // --- FITUR KOOR: INPUT ---
-        async function loadJadwalGuru() {
-            const tgl = document.getElementById('tgl-absen').value;
-            if(!tgl) return;
+        function buildNavbar() {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+
+            const navContainer = document.getElementById('nav-menu-container');
+            navContainer.innerHTML = ''; 
+
+            // Setup Tab berdasarkan Role
+            if (currentUser.role === 'koor') {
+                navContainer.innerHTML = `
+                    <div class="nav-item pb-3 px-2 text-sm sm:text-base text-white/70" onclick="switchTab('dashboard-koor')" id="tab-dashboard-koor">Dashboard Kehadiran</div>
+                    <div class="nav-item pb-3 px-2 text-sm sm:text-base text-white/70" onclick="switchTab('input-data')" id="tab-input-data">Input Data Piket</div>
+                `;
+                switchTab('dashboard-koor'); 
+            } 
+            else if (currentUser.role === 'manajemen') {
+                navContainer.innerHTML = `
+                    <div class="nav-item pb-3 px-2 text-sm sm:text-base text-white/70" onclick="switchTab('dashboard-manajemen')" id="tab-dashboard-manajemen">Dashboard Analytics</div>
+                    <div class="nav-item pb-3 px-2 text-sm sm:text-base text-white/70" onclick="switchTab('data-rekap')" id="tab-data-rekap">Data Rekap</div>
+                `;
+                switchTab('dashboard-manajemen'); 
+            }
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Reset Navbar UI
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'text-aw-gold');
+                el.classList.add('text-white/70');
+            });
+            const activeTab = document.getElementById(`tab-${tabName}`);
+            if(activeTab) {
+                activeTab.classList.add('active', 'text-aw-gold');
+                activeTab.classList.remove('text-white/70');
+            }
+
+            // Render Content Area
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = ''; 
+
+            if (tabName === 'dashboard-koor' || tabName === 'dashboard-manajemen') {
+                renderDashboardUI(tabName);
+                fetchDashboardYearlyData(); 
+            } 
+            else if (tabName === 'input-data') {
+                renderInputUI();
+            } 
+            else if (tabName === 'data-rekap') {
+                renderRekapUI();
+            }
+        }
+
+        // ==========================================
+        // MODULE: DASHBOARD (KOOR & MANAJEMEN)
+        // ==========================================
+        function renderDashboardUI(type) {
+            const isManajemen = type === 'dashboard-manajemen';
+            const today = new Date().toISOString().split('T')[0];
+            const firstDay = new Date();
+            firstDay.setDate(1);
+            const firstDayStr = firstDay.toISOString().split('T')[0];
+
+            let html = `
+                <div class="fade-in">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">${isManajemen ? 'Analytics & Kedisiplinan' : 'Overview Kehadiran'}</h2>
+                            <p class="text-gray-500 text-sm mt-1">Pantau performa kedisiplinan guru piket secara real-time.</p>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                            <input type="date" id="dash-start" value="${firstDayStr}" class="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-aw-green outline-none bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                            <input type="date" id="dash-end" value="${today}" class="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-aw-green outline-none bg-gray-50">
+                        </div>
+                        <button onclick="processDashboardFilter()" class="w-full sm:w-auto bg-aw-dark text-white px-5 py-2 rounded-lg font-semibold hover:bg-aw-green transition shadow-md">
+                            Terapkan Filter
+                        </button>
+                    </div>
+
+                    <!-- Cards (Diisi oleh JS nanti) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="dash-cards">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <!-- Chart Section (Takes 2 columns) -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📈 Tren Kedisiplinan Piket (Tahun Ini)</h3>
+                            <div class="relative h-72 w-full">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-4 text-center italic">*Grafik di atas memuat data 1 tahun penuh, tidak dipengaruhi oleh filter tanggal.</p>
+                        </div>
+                        
+                        <!-- Top Performers (Takes 1 column) -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[400px]">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+                                <span>🏆 Top Kedisiplinan</span>
+                                ${isManajemen ? '<span class="text-[10px] font-bold text-aw-gold bg-aw-gold/10 px-2 py-1 rounded">BERDASARKAN SKOR</span>' : '<span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">BERDASARKAN PERSENTASE</span>'}
+                            </h3>
+                            <div class="flex-1 overflow-y-auto pr-2" id="dash-top-teachers">
+                                <div class="text-center text-gray-400 mt-10 italic text-sm">Memuat peringkat...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('content-area').innerHTML = html;
+        }
+
+        async function fetchDashboardYearlyData() {
+            const year = new Date().getFullYear();
+            const start = `${year}-01-01`;
+            const end = `${year}-12-31`;
 
             showLoading(true);
             try {
-                const res = await fetchAPI('get_jadwal', { tanggal: tgl });
+                const res = await fetchAPI('getRekap', { startDate: start, endDate: end });
+                dataYearlyRaw = res.data || [];
+                
+                renderMonthlyChart(dataYearlyRaw);
+                processDashboardFilter(); 
+                
+            } catch (error) {
+                showNotif('Error', 'Gagal menarik data dashboard.', false);
+            }
+            showLoading(false);
+        }
+
+        function processDashboardFilter() {
+            if(!dataYearlyRaw) return;
+
+            const startStr = document.getElementById('dash-start').value;
+            const endStr = document.getElementById('dash-end').value;
+            
+            const startDate = new Date(startStr); startDate.setHours(0,0,0,0);
+            const endDate = new Date(endStr); endDate.setHours(23,59,59,999);
+
+            const filteredData = dataYearlyRaw.filter(item => {
+                const itemDate = new Date(item.date);
+                itemDate.setHours(12,0,0,0); 
+                return itemDate >= startDate && itemDate <= endDate;
+            });
+
+            let totalJadwal = filteredData.length;
+            let totalHadir = 0;
+            let totalTepatWaktu = 0;
+            let sumSkor = 0;
+            let teacherStats = {}; 
+
+            filteredData.forEach(r => {
+                if(r.status === 'Hadir') {
+                    totalHadir++;
+                    if(r.score === 100) totalTepatWaktu++;
+                }
+                sumSkor += (r.score || 0);
+
+                if(!teacherStats[r.name]) {
+                    teacherStats[r.name] = { hadir: 0, tepat: 0, skor: 0, jadwal: 0 };
+                }
+                teacherStats[r.name].jadwal++;
+                if(r.status === 'Hadir') teacherStats[r.name].hadir++;
+                if(r.score === 100) teacherStats[r.name].tepat++;
+                teacherStats[r.name].skor += (r.score || 0);
+            });
+
+            const persenHadir = totalJadwal === 0 ? 0 : Math.round((totalHadir / totalJadwal) * 100);
+            const persenTepat = totalHadir === 0 ? 0 : Math.round((totalTepatWaktu / totalHadir) * 100);
+            const rataSkor = totalJadwal === 0 ? 0 : Math.round(sumSkor / totalJadwal);
+            const totalAbsen = totalJadwal - totalHadir;
+
+            const cardsContainer = document.getElementById('dash-cards');
+            const isManajemen = currentUser.role === 'manajemen';
+
+            cardsContainer.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-blue-500 relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
+                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Rasio Kehadiran</p>
+                    <div class="flex items-end mt-2 gap-3">
+                        <h3 class="text-4xl font-extrabold text-blue-600">${persenHadir}%</h3>
+                        <p class="text-sm text-gray-500 mb-1">(${totalHadir} / ${totalJadwal} Jadwal)</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-green-500 relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
+                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Tepat Waktu (<= 06:30)</p>
+                    <div class="flex items-end mt-2 gap-3">
+                        <h3 class="text-4xl font-extrabold text-green-600">${persenTepat}%</h3>
+                        <p class="text-sm text-gray-500 mb-1">Dari yang hadir</p>
+                    </div>
+                </div>
+
+                ${isManajemen ? `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-aw-gold relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 bg-yellow-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
+                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Rata-Rata Skor Sekolah</p>
+                    <div class="flex items-end mt-2 gap-3">
+                        <h3 class="text-4xl font-extrabold text-aw-gold">${rataSkor}</h3>
+                        <p class="text-sm text-gray-500 mb-1">Poin / Jadwal</p>
+                    </div>
+                </div>
+                ` : `
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-red-500 relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 bg-red-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
+                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Ketidakhadiran Total</p>
+                    <div class="flex items-end mt-2 gap-3">
+                        <h3 class="text-4xl font-extrabold text-red-500">${totalAbsen}</h3>
+                        <p class="text-sm text-gray-500 mb-1">Jadwal (S/I/A)</p>
+                    </div>
+                </div>
+                `}
+            `;
+
+            let topList = [];
+            for (const [name, stats] of Object.entries(teacherStats)) {
+                const pct = stats.hadir === 0 ? 0 : Math.round((stats.tepat / stats.hadir) * 100);
+                const avgScore = stats.jadwal === 0 ? 0 : Math.round(stats.skor / stats.jadwal);
+                topList.push({ name, pct, avgScore, hadir: stats.hadir });
+            }
+
+            if(isManajemen) {
+                topList.sort((a, b) => b.avgScore - a.avgScore);
+            } else {
+                topList.sort((a, b) => b.pct - a.pct);
+            }
+
+            const topContainer = document.getElementById('dash-top-teachers');
+            if(topList.length === 0) {
+                topContainer.innerHTML = `<div class="text-center text-gray-400 mt-10 text-sm">Tidak ada data untuk rentang ini.</div>`;
+                return;
+            }
+
+            topContainer.innerHTML = topList.slice(0, 10).map((t, index) => {
+                let badge = '';
+                if(index === 0) badge = '🥇';
+                else if(index === 1) badge = '🥈';
+                else if(index === 2) badge = '🥉';
+                else badge = `<span class="text-gray-400 text-xs w-5 inline-block text-center font-bold">${index+1}</span>`;
+
+                return `
+                <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="text-lg w-6 text-center">${badge}</div>
+                        <div>
+                            <div class="text-sm font-bold text-gray-800 line-clamp-1" title="${t.name}">${t.name}</div>
+                            <div class="text-xs text-gray-500">${t.hadir}x Hadir</div>
+                        </div>
+                    </div>
+                    <div class="text-right whitespace-nowrap pl-2">
+                        ${isManajemen 
+                            ? `<div class="text-sm font-extrabold text-aw-gold">${t.avgScore} <span class="text-[10px] text-gray-400 font-normal">pts</span></div>` 
+                            : `<div class="text-sm font-extrabold text-green-600">${t.pct}%</div>`
+                        }
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderMonthlyChart(allData) {
+            const ctx = document.getElementById('monthlyChart');
+            if(!ctx) return;
+
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const hadirCounts = new Array(12).fill(0);
+            const telatCounts = new Array(12).fill(0); 
+
+            allData.forEach(r => {
+                if(r.status === 'Hadir') {
+                    const m = new Date(r.date).getMonth(); 
+                    if(r.score === 100) {
+                        hadirCounts[m]++;
+                    } else {
+                        telatCounts[m]++;
+                    }
+                }
+            });
+
+            if(dashboardChartInstance) {
+                dashboardChartInstance.destroy();
+            }
+
+            dashboardChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Hadir Tepat Waktu',
+                            data: hadirCounts,
+                            backgroundColor: '#005b42', 
+                            borderRadius: 4,
+                            stack: 'Stack 0',
+                        },
+                        {
+                            label: 'Hadir Terlambat',
+                            data: telatCounts,
+                            backgroundColor: '#d9a036', 
+                            borderRadius: 4,
+                            stack: 'Stack 0',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { stacked: true, beginAtZero: true, grid: { borderDash: [4, 4] } },
+                        x: { stacked: true, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // MODULE: KOOR (INPUT DATA)
+        // ==========================================
+        function renderInputUI() {
+            const today = new Date().toISOString().split('T')[0];
+            const html = `
+                <div class="fade-in max-w-5xl mx-auto">
+                    <div class="mb-6">
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">Form Input Presensi</h2>
+                        <p class="text-gray-500 text-sm mt-1">Pilih tanggal untuk melihat jadwal piket guru dari database.</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-end mb-6">
+                        <div class="w-full md:w-64">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Tanggal Piket</label>
+                            <input type="date" id="input-date" value="${today}" onchange="loadInputJadwal()" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-aw-green outline-none font-medium text-gray-700">
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-aw-green text-white text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4 font-semibold w-1/3">Nama Guru</th>
+                                        <th class="p-4 font-semibold w-1/6">Status</th>
+                                        <th class="p-4 font-semibold w-1/6">Waktu Hadir</th>
+                                        <th class="p-4 font-semibold">Keterangan</th>
+                                        <th class="p-4 font-semibold text-center w-16">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="input-tbody" class="text-sm divide-y divide-gray-100 text-gray-700">
+                                    <tr><td colspan="5" class="p-8 text-center text-gray-400 italic">Memuat jadwal...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <button onclick="tambahBarisKosong()" class="text-aw-green font-semibold text-sm hover:text-aw-dark flex items-center bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm transition w-full sm:w-auto justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                Tambah Guru Pengganti
+                            </button>
+                            <button onclick="submitPresensi()" class="w-full sm:w-auto bg-gradient-to-r from-aw-gold to-yellow-600 text-white px-8 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all">
+                                Simpan Presensi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('content-area').innerHTML = html;
+            loadInputJadwal();
+        }
+
+        async function loadInputJadwal() {
+            const tgl = document.getElementById('input-date').value;
+            if(!tgl) return;
+            
+            const dateObj = new Date(tgl);
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const namaHari = days[dateObj.getDay()];
+
+            showLoading(true);
+            try {
+                const res = await fetchAPI('getJadwal', { hari: namaHari });
                 dataInputSementara = res.data || [];
+                
+                dataInputSementara.forEach(d => {
+                    if(!d.status) d.status = "Hadir";
+                    if(!d.waktu) d.waktu = "06:30";
+                    if(!d.keterangan) d.keterangan = "";
+                });
                 renderTabelInput();
             } catch (err) {
-                showNotif('Gagal Memuat', 'Gagal menarik jadwal dari server.', false);
+                showNotif('Error', 'Gagal memuat jadwal dari database.', false);
             }
             showLoading(false);
         }
 
         function renderTabelInput() {
-            const tbody = document.getElementById('tabel-input');
-            tbody.innerHTML = '';
-            
-            if (dataInputSementara.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 italic">Tidak ada jadwal piket atau belum diatur.</td></tr>`;
+            const tbody = document.getElementById('input-tbody');
+            if(dataInputSementara.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 bg-gray-50">Tidak ada jadwal piket hari ini. Klik 'Tambah Guru Pengganti' jika ada.</td></tr>`;
                 return;
             }
 
-            dataInputSementara.forEach((guru, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                        <input type="text" class="w-full bg-transparent border-none p-0 focus:ring-0" value="${guru.nama}" onchange="updateData(${index}, 'nama', this.value)">
+            tbody.innerHTML = dataInputSementara.map((guru, i) => `
+                <tr class="hover:bg-aw-light/50 transition-colors">
+                    <td class="p-3">
+                        <input type="text" class="w-full bg-transparent border-none p-2 font-semibold text-gray-800 focus:ring-1 focus:ring-aw-green rounded" value="${guru.nama}" onchange="dataInputSementara[${i}].nama=this.value" placeholder="Nama Guru">
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <select class="border-gray-300 rounded-md text-sm focus:ring-aw-green" onchange="updateData(${index}, 'status', this.value)">
-                            <option value="Hadir">Hadir</option>
-                            <option value="Sakit">Sakit</option>
-                            <option value="Izin">Izin</option>
-                            <option value="Alpha">Alpha</option>
+                    <td class="p-3">
+                        <select class="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:ring-aw-green cursor-pointer font-medium text-gray-700" onchange="dataInputSementara[${i}].status=this.value">
+                            <option value="Hadir" ${guru.status==='Hadir'?'selected':''}>Hadir</option>
+                            <option value="Sakit" ${guru.status==='Sakit'?'selected':''}>Sakit</option>
+                            <option value="Izin" ${guru.status==='Izin'?'selected':''}>Izin</option>
+                            <option value="Alpha" ${guru.status==='Alpha'?'selected':''}>Alpha</option>
                         </select>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <input type="time" class="border-gray-300 rounded-md text-sm focus:ring-aw-green" onchange="updateData(${index}, 'waktu', this.value)">
+                    <td class="p-3">
+                        <input type="time" class="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:ring-aw-green text-gray-700" value="${guru.waktu}" onchange="dataInputSementara[${i}].waktu=this.value">
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <input type="text" placeholder="Catatan opsional..." class="w-full border-gray-300 rounded-md text-sm focus:ring-aw-green" onchange="updateData(${index}, 'keterangan', this.value)">
+                    <td class="p-3">
+                        <input type="text" class="w-full bg-transparent border-b border-gray-200 p-2 text-sm focus:border-aw-green focus:ring-0 rounded-none placeholder-gray-400" placeholder="Catatan opsional..." value="${guru.keterangan}" onchange="dataInputSementara[${i}].keterangan=this.value">
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <button onclick="hapusBaris(${index})" class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md" title="Hapus">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    <td class="p-3 text-center">
+                        <button onclick="hapusBarisInput(${i})" class="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition" title="Hapus">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                </tr>
+            `).join('');
         }
 
-        function updateData(index, field, value) {
-            dataInputSementara[index][field] = value;
-        }
-
-        function tambahGuruPengganti() {
-            dataInputSementara.push({ nama: "", status: "Hadir", waktu: "", keterangan: "" });
+        function tambahBarisKosong() {
+            dataInputSementara.push({ nama: "", status: "Hadir", waktu: "06:30", keterangan: "" });
             renderTabelInput();
         }
 
-        function hapusBaris(index) {
+        function hapusBarisInput(index) {
             dataInputSementara.splice(index, 1);
             renderTabelInput();
         }
 
-        async function simpanPresensi() {
-            const tgl = document.getElementById('tgl-absen').value;
-            if(!tgl) return showNotif('Peringatan', 'Pilih tanggal piket terlebih dahulu.', false);
-            if(dataInputSementara.length === 0) return showNotif('Peringatan', 'Tidak ada data guru untuk disimpan.', false);
+        async function submitPresensi() {
+            const tgl = document.getElementById('input-date').value;
+            const validRecords = dataInputSementara.filter(r => r.nama.trim() !== "");
+            if(validRecords.length === 0) return showNotif('Peringatan', 'Tidak ada nama guru yang diinput.', false);
+
+            const finalRecords = validRecords.map(r => {
+                let s = 0;
+                if(r.status === 'Hadir') {
+                    const [h, m] = r.waktu.split(':');
+                    if(parseInt(h) < 6 || (parseInt(h) === 6 && parseInt(m) <= 30)) s = 100;
+                    else s = 75;
+                } else if(r.status === 'Izin' || r.status === 'Sakit') {
+                    s = 50;
+                }
+                r.skor = s;
+                r.tanggal = tgl; 
+                return r;
+            });
 
             showLoading(true);
             try {
-                // Kita pack datanya jadi JSON string buat dikirim lewat Form Data
-                const payloadStr = JSON.stringify({
-                    tanggal: tgl,
-                    guru: dataInputSementara
-                });
-                
-                const res = await fetchAPI('simpan_presensi', { data: payloadStr });
+                const res = await fetchAPI('savePresensi', { records: finalRecords });
                 if(res.status === 'success') {
-                    showNotif('Sukses', 'Data presensi berhasil direkam ke database!');
+                    showNotif('Tersimpan!', res.message);
+                    setTimeout(() => loadInputJadwal(), 2000); 
                 } else {
-                    showNotif('Gagal', 'Server menolak penyimpanan.', false);
+                    showNotif('Gagal', res.message, false);
                 }
             } catch (err) {
-                showNotif('Koneksi Gagal', 'Gagal mengirim data ke server.', false);
+                showNotif('Koneksi Gagal', 'Data gagal dikirim ke database.', false);
             }
             showLoading(false);
         }
 
-        // --- FITUR MANAJEMEN: REKAP & EKSPOR ---
-        async function loadRekap() {
-            const start = document.getElementById('filter-start').value;
-            const end = document.getElementById('filter-end').value;
-            const tbody = document.getElementById('body-rekap');
+        // ==========================================
+        // MODULE: MANAJEMEN (DATA REKAP)
+        // ==========================================
+        function renderRekapUI() {
+            const today = new Date().toISOString().split('T')[0];
+            const html = `
+                <div class="fade-in max-w-6xl mx-auto">
+                    <div class="mb-6">
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">Data Laporan Rekapitulasi</h2>
+                        <p class="text-gray-500 text-sm mt-1">Cari, filter, dan ekspor data riwayat kedisiplinan guru.</p>
+                    </div>
 
-            if(!start || !end) {
-                return showNotif('Peringatan', 'Isi kolom Dari Tanggal dan Sampai Tanggal.', false);
-            }
+                    <!-- Filter Area -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col lg:flex-row justify-between items-end gap-4">
+                        <div class="flex flex-wrap items-end gap-4 w-full lg:w-auto">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Dari Tanggal</label>
+                                <input type="date" id="rekap-start" value="${today}" class="w-full sm:w-40 px-3 py-2 border border-gray-200 rounded-lg focus:ring-aw-green outline-none bg-gray-50">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Sampai Tanggal</label>
+                                <input type="date" id="rekap-end" value="${today}" class="w-full sm:w-40 px-3 py-2 border border-gray-200 rounded-lg focus:ring-aw-green outline-none bg-gray-50">
+                            </div>
+                            <button onclick="loadRekapData()" class="w-full sm:w-auto bg-aw-dark text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-aw-green transition shadow-md">
+                                Tarik Data
+                            </button>
+                        </div>
+                        
+                        <div class="flex gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+                            <button onclick="doExportExcel()" class="flex-1 lg:flex-none border-2 border-green-600 text-green-700 bg-white px-4 py-2 rounded-lg font-bold hover:bg-green-50 transition flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Excel
+                            </button>
+                            <button onclick="doExportPDF()" class="flex-1 lg:flex-none border-2 border-red-500 text-red-600 bg-white px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Wrapper Tabel Print -->
+                    <div id="print-wrapper" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        
+                        <!-- KOP SURAT (Hanya Print) -->
+                        <div id="kop-surat" class="hidden border-b-4 border-aw-dark pb-6 mb-6 mt-6 mx-8">
+                            <div class="flex items-center gap-6">
+                                <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" class="w-24 h-24 object-contain">
+                                <div class="text-center w-full">
+                                    <h1 class="text-2xl font-black text-aw-dark uppercase tracking-widest">AL-WILDAN ISLAMIC SCHOOL</h1>
+                                    <p class="text-sm text-gray-800 font-semibold mt-1">LAPORAN REKAPITULASI KEDISIPLINAN GURU PIKET</p>
+                                    <p class="text-xs text-gray-500 mt-1" id="pdf-periode"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse" id="rekap-table">
+                                <thead class="bg-aw-green text-white text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4 font-semibold">Tanggal</th>
+                                        <th class="p-4 font-semibold">Nama Guru</th>
+                                        <th class="p-4 font-semibold text-center">Waktu</th>
+                                        <th class="p-4 font-semibold text-center">Status</th>
+                                        <th class="p-4 font-semibold text-center">Skor</th>
+                                        <th class="p-4 font-semibold">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rekap-tbody" class="text-sm divide-y divide-gray-100 text-gray-700">
+                                    <tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Klik "Tarik Data" untuk memuat laporan.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('content-area').innerHTML = html;
+            loadRekapData(); 
+        }
+
+        async function loadRekapData() {
+            const start = document.getElementById('rekap-start').value;
+            const end = document.getElementById('rekap-end').value;
+            const tbody = document.getElementById('rekap-tbody');
+
+            if(!start || !end) return;
 
             showLoading(true);
             try {
-                const res = await fetchAPI('get_rekap', { start: start, end: end });
-                tbody.innerHTML = '';
+                const res = await fetchAPI('getRekap', { startDate: start, endDate: end });
+                dataRekapGlobal = res.data || [];
                 
-                if(!res.data || res.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400 italic">Tidak ada data ditemukan pada rentang tanggal tersebut.</td></tr>`;
+                if(dataRekapGlobal.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 italic font-medium">Tidak ada data ditemukan.</td></tr>`;
                     showLoading(false);
                     return;
                 }
 
-                res.data.forEach(item => {
-                    // Warna badge status
-                    let badgeClass = "bg-green-100 text-green-800";
-                    if(item.status === 'Alpha') badgeClass = "bg-red-100 text-red-800";
-                    else if(item.status !== 'Hadir') badgeClass = "bg-yellow-100 text-yellow-800";
-                    
-                    // Warna skor
-                    let scoreColor = "text-green-600";
-                    if(item.skor < 75) scoreColor = "text-red-500";
-                    else if(item.skor < 100) scoreColor = "text-yellow-600";
+                tbody.innerHTML = dataRekapGlobal.map(d => {
+                    let badge = '';
+                    if(d.status === 'Hadir') badge = '<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">Hadir</span>';
+                    else if(d.status === 'Sakit') badge = '<span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">Sakit</span>';
+                    else if(d.status === 'Izin') badge = '<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">Izin</span>';
+                    else badge = '<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Alpha</span>';
 
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-600">${item.tanggal}</td>
-                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${item.nama}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-600 font-mono">${item.waktu || '-'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap"><span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}">${item.status}</span></td>
-                        <td class="px-6 py-4 whitespace-nowrap font-bold ${scoreColor}">${item.skor}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">${item.keterangan || '-'}</td>
+                    let scoreClass = 'text-green-600 font-extrabold';
+                    if(d.score <= 50) scoreClass = 'text-red-500 font-bold';
+                    else if(d.score < 100) scoreClass = 'text-yellow-600 font-bold';
+
+                    return `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="p-4 whitespace-nowrap text-gray-600 font-medium">${d.date}</td>
+                        <td class="p-4 whitespace-nowrap text-gray-900 font-bold">${d.name}</td>
+                        <td class="p-4 whitespace-nowrap text-center text-gray-600 font-mono text-xs">${d.time || '-'}</td>
+                        <td class="p-4 whitespace-nowrap text-center">${badge}</td>
+                        <td class="p-4 whitespace-nowrap text-center ${scoreClass}">${d.score}</td>
+                        <td class="p-4 whitespace-nowrap text-gray-500 text-xs">${d.keterangan || '-'}</td>
+                    </tr>
                     `;
-                    tbody.appendChild(tr);
-                });
+                }).join('');
+
             } catch (err) {
-                showNotif('Gagal Memuat', 'Gagal menarik laporan dari server.', false);
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Terjadi kesalahan saat memuat data.</td></tr>`;
             }
             showLoading(false);
         }
 
-        function exportExcel() {
-            const table = document.getElementById("tabel-laporan");
-            const wb = XLSX.utils.table_to_book(table, {sheet: "Laporan Presensi"});
+        function doExportExcel() {
+            if(dataRekapGlobal.length === 0) return showNotif('Kosong', 'Tidak ada data untuk di-export.', false);
+            const table = document.getElementById('rekap-table');
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Laporan"});
             XLSX.writeFile(wb, "Rekap_Presensi_AlWildan.xlsx");
         }
 
-        function exportPDF() {
-            const element = document.getElementById('print-area');
+        function doExportPDF() {
+            if(dataRekapGlobal.length === 0) return showNotif('Kosong', 'Tidak ada data untuk di-export.', false);
+            
+            const element = document.getElementById('print-wrapper');
             const kopSurat = document.getElementById('kop-surat');
-            const start = document.getElementById('filter-start').value;
-            const end = document.getElementById('filter-end').value;
+            const start = document.getElementById('rekap-start').value;
+            const end = document.getElementById('rekap-end').value;
             
-            // Set teks periode di Kop Surat
             document.getElementById('pdf-periode').textContent = `Periode: ${start} s/d ${end}`;
-            
-            // Munculkan kop surat khusus untuk PDF
             kopSurat.classList.remove('hidden');
-            kopSurat.classList.add('print-only');
+            kopSurat.classList.add('print-only'); 
 
             const opt = {
                 margin:       [0.5, 0.5, 0.5, 0.5],
-                filename:     'Laporan_Presensi_AlWildan.pdf',
+                filename:     'Laporan_Presensi.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
             };
 
             showLoading(true);
             html2pdf().set(opt).from(element).save().then(() => {
-                // Sembunyikan kop surat lagi setelah beres
                 kopSurat.classList.add('hidden');
                 kopSurat.classList.remove('print-only');
                 showLoading(false);
             });
         }
+
+        // INIT
+        window.onload = () => { document.getElementById('login-page').classList.remove('hidden'); };
     </script>
 </body>
 </html>
