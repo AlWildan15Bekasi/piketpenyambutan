@@ -148,18 +148,16 @@
         let currentUser = null;
         let currentTab = '';
         
-        // State Data
-        let dataInputSementara = []; 
+        // State Data Baru
+        let rawJadwalData = [];      // Menyimpan data tarikan jadwal backend utuh
+        let currentShift = 'Pagi';   // Menyimpan tab shift aktif di form input
+        let dataInputSementara = []; // Data yang tampil di tabel input saat ini
         let dataRekapGlobal = [];    
         let dataYearlyRaw = [];      
         let dashboardChartInstance = null;
 
-        // ==========================================
         // UI HELPERS (MODAL & LOADER)
-        // ==========================================
-        function showLoading(show) {
-            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
-        }
+        function showLoading(show) { document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none'; }
 
         function showNotif(title, message, isSuccess = true) {
             const modal = document.getElementById('modal-notif');
@@ -179,11 +177,14 @@
 
         function closeModal() { document.getElementById('modal-notif').classList.add('hidden'); }
 
-        async function fetchAPI(action, payloadObj = {}) {
+        // Fetch API - Anti CORS & Matching Backend Persis
+        async function fetchAPI(action, extraParams = {}) {
             try {
                 const params = new URLSearchParams();
-                const dataString = JSON.stringify({ action: action, payload: payloadObj });
-                params.append('data', dataString); 
+                params.append('action', action);
+                for (const key in extraParams) {
+                    params.append(key, extraParams[key]);
+                }
 
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
@@ -234,7 +235,6 @@
             const navContainer = document.getElementById('nav-menu-container');
             navContainer.innerHTML = ''; 
 
-            // Setup Tab berdasarkan Role
             if (currentUser.role === 'koor') {
                 navContainer.innerHTML = `
                     <div class="nav-item pb-3 px-2 text-sm sm:text-base text-white/70" onclick="switchTab('dashboard-koor')" id="tab-dashboard-koor">Dashboard Kehadiran</div>
@@ -253,8 +253,6 @@
 
         function switchTab(tabName) {
             currentTab = tabName;
-            
-            // Reset Navbar UI
             document.querySelectorAll('.nav-item').forEach(el => {
                 el.classList.remove('active', 'text-aw-gold');
                 el.classList.add('text-white/70');
@@ -265,7 +263,6 @@
                 activeTab.classList.remove('text-white/70');
             }
 
-            // Render Content Area
             const contentArea = document.getElementById('content-area');
             contentArea.innerHTML = ''; 
 
@@ -300,7 +297,6 @@
                         </div>
                     </div>
 
-                    <!-- Filter Bar -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-end">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dari Tanggal</label>
@@ -315,31 +311,41 @@
                         </button>
                     </div>
 
-                    <!-- Cards (Diisi oleh JS nanti) -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="dash-cards">
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-pulse h-28"></div>
+                        <!-- Disuntik via JS -->
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        <!-- Chart Section (Takes 2 columns) -->
                         <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📈 Tren Kedisiplinan Piket (Tahun Ini)</h3>
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📈 Tren Kedisiplinan (Tahun Ini)</h3>
                             <div class="relative h-72 w-full">
                                 <canvas id="monthlyChart"></canvas>
                             </div>
-                            <p class="text-xs text-gray-400 mt-4 text-center italic">*Grafik di atas memuat data 1 tahun penuh, tidak dipengaruhi oleh filter tanggal.</p>
                         </div>
                         
-                        <!-- Top Performers (Takes 1 column) -->
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[400px]">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
-                                <span>🏆 Top Kedisiplinan</span>
-                                ${isManajemen ? '<span class="text-[10px] font-bold text-aw-gold bg-aw-gold/10 px-2 py-1 rounded">BERDASARKAN SKOR</span>' : '<span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">BERDASARKAN PERSENTASE</span>'}
-                            </h3>
-                            <div class="flex-1 overflow-y-auto pr-2" id="dash-top-teachers">
-                                <div class="text-center text-gray-400 mt-10 italic text-sm">Memuat peringkat...</div>
+                        <div class="flex flex-col gap-6">
+                            <!-- WIDGET PIKET KEPULANGAN -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+                                <div class="absolute -right-4 -top-4 w-16 h-16 bg-aw-gold/10 rounded-full"></div>
+                                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center relative z-10">
+                                    <span>👋 Piket Kepulangan</span>
+                                    <span class="text-[10px] font-bold text-aw-gold bg-yellow-50 border border-yellow-100 px-2 py-1 rounded">HARI INI</span>
+                                </h3>
+                                <div id="widget-kepulangan" class="space-y-2 relative z-10">
+                                    <div class="animate-pulse h-12 bg-gray-100 rounded-lg"></div>
+                                    <div class="animate-pulse h-12 bg-gray-100 rounded-lg"></div>
+                                </div>
+                            </div>
+
+                            <!-- TOP PERFORMERS -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col min-h-[250px]">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+                                    <span>🏆 Top Disiplin</span>
+                                    ${isManajemen ? '<span class="text-[10px] font-bold text-aw-green bg-green-50 px-2 py-1 rounded">SKOR</span>' : '<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">PERSENTASE</span>'}
+                                </h3>
+                                <div class="flex-1 overflow-y-auto pr-2" id="dash-top-teachers">
+                                    <div class="text-center text-gray-400 mt-6 italic text-sm">Memuat peringkat...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -355,16 +361,58 @@
 
             showLoading(true);
             try {
-                const res = await fetchAPI('getRekap', { startDate: start, endDate: end });
+                // Tarik rekap untuk grafik dan metrik
+                const res = await fetchAPI('get_rekap', { start: start, end: end });
                 dataYearlyRaw = res.data || [];
                 
                 renderMonthlyChart(dataYearlyRaw);
                 processDashboardFilter(); 
                 
+                // Tarik data kepulangan khusus hari ini
+                await loadWidgetKepulangan();
+
             } catch (error) {
                 showNotif('Error', 'Gagal menarik data dashboard.', false);
             }
             showLoading(false);
+        }
+
+        async function loadWidgetKepulangan() {
+            const today = new Date();
+            // Format YYYY-MM-DD
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            
+            const isJumat = today.getDay() === 5;
+            const targetShift = isJumat ? 'Siang' : 'Sore';
+            
+            try {
+                const res = await fetchAPI('get_jadwal', { tanggal: todayStr });
+                // Filter hanya shift target, ambil max 3 orang
+                const kepulanganData = (res.data || []).filter(r => r.shift === targetShift).slice(0, 3);
+                
+                const container = document.getElementById('widget-kepulangan');
+                if (kepulanganData.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-gray-500 italic text-center py-4 bg-gray-50 rounded-lg">Tidak ada jadwal piket kepulangan tercatat.</p>`;
+                    return;
+                }
+                
+                container.innerHTML = kepulanganData.map(guru => `
+                    <div class="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100 hover:bg-white transition-colors hover:shadow-sm">
+                        <div class="w-8 h-8 rounded-full bg-aw-gold/20 text-aw-dark flex items-center justify-center font-bold text-xs shadow-inner">
+                            ${guru.nama.charAt(0)}
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-bold text-gray-800 line-clamp-1" title="${guru.nama}">${guru.nama}</h4>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Shift ${targetShift}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('widget-kepulangan').innerHTML = `<p class="text-xs text-red-400 text-center">Gagal memuat jadwal.</p>`;
+            }
         }
 
         function processDashboardFilter() {
@@ -377,7 +425,7 @@
             const endDate = new Date(endStr); endDate.setHours(23,59,59,999);
 
             const filteredData = dataYearlyRaw.filter(item => {
-                const itemDate = new Date(item.date);
+                const itemDate = new Date(item.tanggal);
                 itemDate.setHours(12,0,0,0); 
                 return itemDate >= startDate && itemDate <= endDate;
             });
@@ -391,17 +439,17 @@
             filteredData.forEach(r => {
                 if(r.status === 'Hadir') {
                     totalHadir++;
-                    if(r.score === 100) totalTepatWaktu++;
+                    if(r.skor === 100) totalTepatWaktu++;
                 }
-                sumSkor += (r.score || 0);
+                sumSkor += (r.skor || 0);
 
-                if(!teacherStats[r.name]) {
-                    teacherStats[r.name] = { hadir: 0, tepat: 0, skor: 0, jadwal: 0 };
+                if(!teacherStats[r.nama]) {
+                    teacherStats[r.nama] = { hadir: 0, tepat: 0, skor: 0, jadwal: 0 };
                 }
-                teacherStats[r.name].jadwal++;
-                if(r.status === 'Hadir') teacherStats[r.name].hadir++;
-                if(r.score === 100) teacherStats[r.name].tepat++;
-                teacherStats[r.name].skor += (r.score || 0);
+                teacherStats[r.nama].jadwal++;
+                if(r.status === 'Hadir') teacherStats[r.nama].hadir++;
+                if(r.skor === 100) teacherStats[r.nama].tepat++;
+                teacherStats[r.nama].skor += (r.skor || 0);
             });
 
             const persenHadir = totalJadwal === 0 ? 0 : Math.round((totalHadir / totalJadwal) * 100);
@@ -414,7 +462,6 @@
 
             cardsContainer.innerHTML = `
                 <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-blue-500 relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 bg-blue-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
                     <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Rasio Kehadiran</p>
                     <div class="flex items-end mt-2 gap-3">
                         <h3 class="text-4xl font-extrabold text-blue-600">${persenHadir}%</h3>
@@ -423,8 +470,7 @@
                 </div>
                 
                 <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-green-500 relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
-                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Tepat Waktu (<= 06:30)</p>
+                    <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Tepat Waktu (Disiplin)</p>
                     <div class="flex items-end mt-2 gap-3">
                         <h3 class="text-4xl font-extrabold text-green-600">${persenTepat}%</h3>
                         <p class="text-sm text-gray-500 mb-1">Dari yang hadir</p>
@@ -432,17 +478,15 @@
                 </div>
 
                 ${isManajemen ? `
-                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-aw-gold relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 bg-yellow-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-aw-green relative overflow-hidden group">
                     <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Rata-Rata Skor Sekolah</p>
                     <div class="flex items-end mt-2 gap-3">
-                        <h3 class="text-4xl font-extrabold text-aw-gold">${rataSkor}</h3>
+                        <h3 class="text-4xl font-extrabold text-aw-green">${rataSkor}</h3>
                         <p class="text-sm text-gray-500 mb-1">Poin / Jadwal</p>
                     </div>
                 </div>
                 ` : `
                 <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-red-500 relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 bg-red-50 w-24 h-24 rounded-full flex items-center justify-center opacity-50 group-hover:scale-110 transition-transform"></div>
                     <p class="text-sm font-bold text-gray-500 uppercase tracking-wide">Ketidakhadiran Total</p>
                     <div class="flex items-end mt-2 gap-3">
                         <h3 class="text-4xl font-extrabold text-red-500">${totalAbsen}</h3>
@@ -459,11 +503,8 @@
                 topList.push({ name, pct, avgScore, hadir: stats.hadir });
             }
 
-            if(isManajemen) {
-                topList.sort((a, b) => b.avgScore - a.avgScore);
-            } else {
-                topList.sort((a, b) => b.pct - a.pct);
-            }
+            if(isManajemen) topList.sort((a, b) => b.avgScore - a.avgScore);
+            else topList.sort((a, b) => b.pct - a.pct);
 
             const topContainer = document.getElementById('dash-top-teachers');
             if(topList.length === 0) {
@@ -472,25 +513,20 @@
             }
 
             topContainer.innerHTML = topList.slice(0, 10).map((t, index) => {
-                let badge = '';
-                if(index === 0) badge = '🥇';
-                else if(index === 1) badge = '🥈';
-                else if(index === 2) badge = '🥉';
-                else badge = `<span class="text-gray-400 text-xs w-5 inline-block text-center font-bold">${index+1}</span>`;
-
+                let badge = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `<span class="text-gray-400 text-xs w-5 inline-block text-center font-bold">${index+1}</span>`;
                 return `
-                <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
+                <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
                     <div class="flex items-center gap-3">
                         <div class="text-lg w-6 text-center">${badge}</div>
                         <div>
                             <div class="text-sm font-bold text-gray-800 line-clamp-1" title="${t.name}">${t.name}</div>
-                            <div class="text-xs text-gray-500">${t.hadir}x Hadir</div>
+                            <div class="text-[10px] font-semibold text-gray-400 uppercase">${t.hadir}x Hadir</div>
                         </div>
                     </div>
                     <div class="text-right whitespace-nowrap pl-2">
                         ${isManajemen 
-                            ? `<div class="text-sm font-extrabold text-aw-gold">${t.avgScore} <span class="text-[10px] text-gray-400 font-normal">pts</span></div>` 
-                            : `<div class="text-sm font-extrabold text-green-600">${t.pct}%</div>`
+                            ? `<div class="text-sm font-extrabold text-aw-green">${t.avgScore} <span class="text-[10px] text-gray-400 font-normal">pts</span></div>` 
+                            : `<div class="text-sm font-extrabold text-blue-600">${t.pct}%</div>`
                         }
                     </div>
                 </div>
@@ -508,47 +544,26 @@
 
             allData.forEach(r => {
                 if(r.status === 'Hadir') {
-                    const m = new Date(r.date).getMonth(); 
-                    if(r.score === 100) {
-                        hadirCounts[m]++;
-                    } else {
-                        telatCounts[m]++;
-                    }
+                    const m = new Date(r.tanggal).getMonth(); 
+                    if(r.skor === 100) hadirCounts[m]++;
+                    else telatCounts[m]++;
                 }
             });
 
-            if(dashboardChartInstance) {
-                dashboardChartInstance.destroy();
-            }
+            if(dashboardChartInstance) dashboardChartInstance.destroy();
 
             dashboardChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: months,
                     datasets: [
-                        {
-                            label: 'Hadir Tepat Waktu',
-                            data: hadirCounts,
-                            backgroundColor: '#005b42', 
-                            borderRadius: 4,
-                            stack: 'Stack 0',
-                        },
-                        {
-                            label: 'Hadir Terlambat',
-                            data: telatCounts,
-                            backgroundColor: '#d9a036', 
-                            borderRadius: 4,
-                            stack: 'Stack 0',
-                        }
+                        { label: 'Hadir Tepat Waktu', data: hadirCounts, backgroundColor: '#005b42', borderRadius: 4, stack: 'Stack 0' },
+                        { label: 'Hadir Terlambat', data: telatCounts, backgroundColor: '#d9a036', borderRadius: 4, stack: 'Stack 0' }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
-                        tooltip: { mode: 'index', intersect: false }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
                     scales: {
                         y: { stacked: true, beginAtZero: true, grid: { borderDash: [4, 4] } },
                         x: { stacked: true, grid: { display: false } }
@@ -566,7 +581,7 @@
                 <div class="fade-in max-w-5xl mx-auto">
                     <div class="mb-6">
                         <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">Form Input Presensi</h2>
-                        <p class="text-gray-500 text-sm mt-1">Pilih tanggal untuk melihat jadwal piket guru dari database.</p>
+                        <p class="text-gray-500 text-sm mt-1">Pilih tanggal dan tab shift untuk melihat jadwal piket.</p>
                     </div>
 
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-end mb-6">
@@ -575,6 +590,9 @@
                             <input type="date" id="input-date" value="${today}" onchange="loadInputJadwal()" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-aw-green outline-none font-medium text-gray-700">
                         </div>
                     </div>
+
+                    <!-- KONTINER TOMBOL SHIFT (Di-render via JS) -->
+                    <div class="flex gap-3 mb-6" id="shift-buttons-container"></div>
 
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="overflow-x-auto">
@@ -599,8 +617,8 @@
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                 Tambah Guru Pengganti
                             </button>
-                            <button onclick="submitPresensi()" class="w-full sm:w-auto bg-gradient-to-r from-aw-gold to-yellow-600 text-white px-8 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all">
-                                Simpan Presensi
+                            <button onclick="submitPresensi()" class="w-full sm:w-auto bg-gradient-to-r from-aw-green to-aw-dark text-white px-8 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all">
+                                Simpan Shift <span id="btn-shift-label"></span>
                             </button>
                         </div>
                     </div>
@@ -614,31 +632,55 @@
             const tgl = document.getElementById('input-date').value;
             if(!tgl) return;
             
-            const dateObj = new Date(tgl);
-            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const namaHari = days[dateObj.getDay()];
-
             showLoading(true);
             try {
-                const res = await fetchAPI('getJadwal', { hari: namaHari });
-                dataInputSementara = res.data || [];
+                const res = await fetchAPI('get_jadwal', { tanggal: tgl });
+                rawJadwalData = res.data || [];
                 
-                dataInputSementara.forEach(d => {
-                    if(!d.status) d.status = "Hadir";
-                    if(!d.waktu) d.waktu = "06:30";
-                    if(!d.keterangan) d.keterangan = "";
-                });
-                renderTabelInput();
+                // Menentukan tombol shift yang muncul berdasarkan hari Jumat atau Bukan
+                const dateObj = new Date(tgl);
+                const isJumat = dateObj.getDay() === 5;
+                const availableShifts = isJumat ? ['Pagi', 'Siang'] : ['Pagi', 'Sore'];
+                
+                // Pastikan shift aktif valid dengan hari yang dipilih
+                if (!availableShifts.includes(currentShift)) currentShift = 'Pagi';
+                
+                renderShiftButtons(availableShifts);
+                switchShift(currentShift);
             } catch (err) {
                 showNotif('Error', 'Gagal memuat jadwal dari database.', false);
             }
             showLoading(false);
         }
 
+        function renderShiftButtons(shifts) {
+            const container = document.getElementById('shift-buttons-container');
+            container.innerHTML = shifts.map(s => `
+                <button onclick="switchShift('${s}')" class="flex-1 py-3 px-4 rounded-xl font-extrabold text-sm transition-all shadow-sm border-2 ${currentShift === s ? 'bg-aw-dark text-white border-aw-dark shadow-md transform -translate-y-0.5' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 hover:border-gray-200'}">
+                    ${s === 'Pagi' ? '🌅' : (s === 'Siang' ? '☀️' : '🌇')} Piket ${s}
+                </button>
+            `).join('');
+        }
+
+        function switchShift(shift) {
+            currentShift = shift;
+            
+            // Re-render button visual
+            const dateObj = new Date(document.getElementById('input-date').value);
+            const isJumat = dateObj.getDay() === 5;
+            renderShiftButtons(isJumat ? ['Pagi', 'Siang'] : ['Pagi', 'Sore']);
+            
+            document.getElementById('btn-shift-label').textContent = shift;
+            
+            // Filter jadwal sementara khusus shift yang dipilih
+            dataInputSementara = rawJadwalData.filter(d => d.shift === shift);
+            renderTabelInput();
+        }
+
         function renderTabelInput() {
             const tbody = document.getElementById('input-tbody');
             if(dataInputSementara.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 bg-gray-50">Tidak ada jadwal piket hari ini. Klik 'Tambah Guru Pengganti' jika ada.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500 bg-gray-50 font-medium">Tidak ada jadwal tercatat untuk shift ${currentShift} di hari ini. Klik 'Tambah Guru' jika ada.</td></tr>`;
                 return;
             }
 
@@ -671,7 +713,14 @@
         }
 
         function tambahBarisKosong() {
-            dataInputSementara.push({ nama: "", status: "Hadir", waktu: "06:30", keterangan: "" });
+            // Set default time berdasarkan tab shift yang sedang aktif
+            let defaultJam = "06:30";
+            if (currentShift === 'Siang') defaultJam = "10:30";
+            else if (currentShift === 'Sore') defaultJam = "15:00";
+            
+            dataInputSementara.push({ 
+                nama: "", status: "Hadir", waktu: defaultJam, keterangan: "", shift: currentShift 
+            });
             renderTabelInput();
         }
 
@@ -685,25 +734,18 @@
             const validRecords = dataInputSementara.filter(r => r.nama.trim() !== "");
             if(validRecords.length === 0) return showNotif('Peringatan', 'Tidak ada nama guru yang diinput.', false);
 
-            const finalRecords = validRecords.map(r => {
-                let s = 0;
-                if(r.status === 'Hadir') {
-                    const [h, m] = r.waktu.split(':');
-                    if(parseInt(h) < 6 || (parseInt(h) === 6 && parseInt(m) <= 30)) s = 100;
-                    else s = 75;
-                } else if(r.status === 'Izin' || r.status === 'Sakit') {
-                    s = 50;
-                }
-                r.skor = s;
-                r.tanggal = tgl; 
-                return r;
-            });
+            // Kita pastikan semua dikasih cap shift sebelum dikirim ke backend
+            validRecords.forEach(r => { r.shift = currentShift; });
 
             showLoading(true);
             try {
-                const res = await fetchAPI('savePresensi', { records: finalRecords });
+                // Membungkus data dalam format JSON String seperti request Backend terbaru
+                const payloadStr = JSON.stringify({ tanggal: tgl, guru: validRecords });
+                const res = await fetchAPI('simpan_presensi', { data: payloadStr });
+                
                 if(res.status === 'success') {
-                    showNotif('Tersimpan!', res.message);
+                    showNotif('Tersimpan!', `Data Presensi Shift ${currentShift} berhasil disimpan.`);
+                    // Refresh data murni dari server
                     setTimeout(() => loadInputJadwal(), 2000); 
                 } else {
                     showNotif('Gagal', res.message, false);
@@ -722,11 +764,10 @@
             const html = `
                 <div class="fade-in max-w-6xl mx-auto">
                     <div class="mb-6">
-                        <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">Data Laporan Rekapitulasi</h2>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-aw-dark tracking-tight">Laporan Rekapitulasi</h2>
                         <p class="text-gray-500 text-sm mt-1">Cari, filter, dan ekspor data riwayat kedisiplinan guru.</p>
                     </div>
 
-                    <!-- Filter Area -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col lg:flex-row justify-between items-end gap-4">
                         <div class="flex flex-wrap items-end gap-4 w-full lg:w-auto">
                             <div>
@@ -754,10 +795,8 @@
                         </div>
                     </div>
 
-                    <!-- Wrapper Tabel Print -->
                     <div id="print-wrapper" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         
-                        <!-- KOP SURAT (Hanya Print) -->
                         <div id="kop-surat" class="hidden border-b-4 border-aw-dark pb-6 mb-6 mt-6 mx-8">
                             <div class="flex items-center gap-6">
                                 <img src="https://thumbs2.imgbox.com/8b/e7/J7FXtyDb_t.png" class="w-24 h-24 object-contain">
@@ -775,10 +814,10 @@
                                     <tr>
                                         <th class="p-4 font-semibold">Tanggal</th>
                                         <th class="p-4 font-semibold">Nama Guru</th>
+                                        <th class="p-4 font-semibold text-center">Shift</th>
                                         <th class="p-4 font-semibold text-center">Waktu</th>
                                         <th class="p-4 font-semibold text-center">Status</th>
                                         <th class="p-4 font-semibold text-center">Skor</th>
-                                        <th class="p-4 font-semibold">Keterangan</th>
                                     </tr>
                                 </thead>
                                 <tbody id="rekap-tbody" class="text-sm divide-y divide-gray-100 text-gray-700">
@@ -802,7 +841,7 @@
 
             showLoading(true);
             try {
-                const res = await fetchAPI('getRekap', { startDate: start, endDate: end });
+                const res = await fetchAPI('get_rekap', { start: start, end: end });
                 dataRekapGlobal = res.data || [];
                 
                 if(dataRekapGlobal.length === 0) {
@@ -819,17 +858,17 @@
                     else badge = '<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Alpha</span>';
 
                     let scoreClass = 'text-green-600 font-extrabold';
-                    if(d.score <= 50) scoreClass = 'text-red-500 font-bold';
-                    else if(d.score < 100) scoreClass = 'text-yellow-600 font-bold';
+                    if(d.skor <= 50) scoreClass = 'text-red-500 font-bold';
+                    else if(d.skor < 100) scoreClass = 'text-yellow-600 font-bold';
 
                     return `
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="p-4 whitespace-nowrap text-gray-600 font-medium">${d.date}</td>
-                        <td class="p-4 whitespace-nowrap text-gray-900 font-bold">${d.name}</td>
-                        <td class="p-4 whitespace-nowrap text-center text-gray-600 font-mono text-xs">${d.time || '-'}</td>
+                        <td class="p-4 whitespace-nowrap text-gray-600 font-medium">${d.tanggal}</td>
+                        <td class="p-4 whitespace-nowrap text-gray-900 font-bold">${d.nama} <div class="text-[10px] text-gray-400 font-normal mt-0.5 line-clamp-1">${d.keterangan || '-'}</div></td>
+                        <td class="p-4 whitespace-nowrap text-center"><span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">${d.shift || 'Pagi'}</span></td>
+                        <td class="p-4 whitespace-nowrap text-center text-gray-600 font-mono text-xs">${d.waktu || '-'}</td>
                         <td class="p-4 whitespace-nowrap text-center">${badge}</td>
-                        <td class="p-4 whitespace-nowrap text-center ${scoreClass}">${d.score}</td>
-                        <td class="p-4 whitespace-nowrap text-gray-500 text-xs">${d.keterangan || '-'}</td>
+                        <td class="p-4 whitespace-nowrap text-center ${scoreClass}">${d.skor}</td>
                     </tr>
                     `;
                 }).join('');
